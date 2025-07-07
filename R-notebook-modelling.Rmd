@@ -1,0 +1,121 @@
+---
+title: "R Notebook-modelling"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+
+```{r}
+plot(cars)
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+
+```{r}
+library(lme4)      # For mixed-effects models
+library(lmerTest)  # For p-values with lmer()
+library(tidyverse) # For data manipulation
+
+```
+# I must load my data first
+
+```{r}
+data <- read_delim("~/Documents/master_internship/outputs_final_data/final_df.csv", delim = ";")
+data_session1 <- subset(data, session == "ses-mri01")
+colnames(data)
+head(data)
+```
+#I'm building up Congruency + RT here
+
+```{r}
+data$congruency_response <- factor(data$congruency_response)
+data$volatility <- factor(data$volatility)
+data$session <- factor(data$session)
+
+```
+```{r}
+model <- lmer(RT_s ~ congruency_response * time_since_switch * volatility * session + 
+              (1 + congruency_response | subject), 
+              data = data)
+
+```
+
+```{r}
+model_session1 <- lmer(RT_s ~ congruency_response * time_since_switch * volatility + 
+                       (1 | subject), 
+                       data = data_session1)
+
+```
+
+```{r}
+summary(model_session1)
+```
+#Now let's see some plots
+
+```{r}
+ggplot(data_session1, aes(x = time_since_switch, y = RT_s, color = congruency_response)) +
+  geom_smooth(method = "lm") +
+  facet_wrap(~ volatility)
+
+
+```
+```{r}
+ggplot(data_session1, aes(x = time_since_switch, y = RT_s, color = congruency_response)) +
+  geom_point(alpha = 0.2) +
+  geom_smooth(method = "lm") +
+  facet_wrap(~ volatility)
+
+```
+```{r}
+ggplot(data_session1, aes(x = time_since_switch, y = RT_s, color = congruency_response)) +
+  geom_point(alpha = 0.3, size = 1) +
+  geom_smooth(method = "loess", se = TRUE) +
+  facet_wrap(~ volatility) +
+  theme_minimal()
+
+```
+```{r}
+lme4::isSingular(model, tol = 1e-4)
+
+```
+
+```{r}
+summary(model_session1)$varcor
+
+```
+```{r}
+model_max <- lmer(RT_s ~ congruency_response * time_since_switch * volatility + 
+                  (1 + congruency_response | subject), 
+                  data = data_session1,
+                  control = lmerControl(optimizer = "bobyqa", calc.derivs = FALSE))
+
+```
+
+```{r}
+rePCA(model_max)
+
+```
+```{r}
+model_full <- lmer(RT_s ~ congruency_response * time_since_switch * volatility + 
+                   (1 + congruency_response | subject), data = data_session1,
+                   control = lmerControl(optimizer = "bobyqa", calc.derivs = FALSE))
+
+
+```
+
+```{r}
+model_simple <- lmer(RT_s ~ congruency_response * time_since_switch * volatility +
+                     (1 | subject), data = data_session1)
+```
+
+#see which model is better
+```{r}
+anova(model_simple, model_full)
+```
+
