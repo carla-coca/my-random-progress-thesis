@@ -1,0 +1,120 @@
+---
+title: "Linear mixed models & post hoc analyses"
+output: html_notebook
+---
+# Load packages up
+
+```{r}
+library(lme4)      # For mixed-effects models
+library(lmerTest)  # For p-values with lmer()
+library(tidyverse) # For data manipulation
+
+```
+
+#Load my data
+#I just want session 1 as my analyses foccus around that
+
+```{r}
+data <- read_delim("~/Documents/master_internship/outputs_final_data/final_df.csv", delim = ";")
+data1 <- filter(data, session == "ses-mri01")
+colnames(data1)
+head(data1)
+```
+```{r}
+data1 <- data1 %>%
+  mutate(
+    stimuli_type = factor(stimuli_type, levels = c("Angry",    "Happy" )),
+    response      = factor(response,      levels = c("Approach","Avoid" )),
+    volatility    = factor(volatility,    levels = c("stable",  "volatile"))
+  )
+```
+# Drop rows with true NAs in any model variable
+# (response has 114 NAs we’ll remove; error_rate should have none)
+```{r}
+data_mod <- data1 %>%
+  select(subject, error_rate, response, volatility, stimuli_type) %>%
+  filter(
+    !is.na(error_rate),
+    !is.na(response),
+    !is.na(volatility),
+    !is.na(stimuli_type)
+  ) %>%
+  droplevels()
+
+```
+
+# Quick sanity checks
+
+```{r}
+nrow(data_mod)   # should be 7260 − 114 = 7146
+lapply(data_mod[c("response","volatility","stimuli_type")], levels)
+```
+#1: Model 1: the effect of my dependent variables on error_rate & subject 
+
+```{r}
+m_max <- lmer(
+  error_rate ~ response
+             * volatility
+             * stimuli_type
+    + (1
+       + response
+       + volatility
+       + stimuli_type
+       || subject),
+  data    = data_mod,
+  control = lmerControl(
+    optimizer   = "bobyqa",
+    calc.derivs  = FALSE,
+    optCtrl      = list(maxfun = 2e5)
+  ),
+  REML    = FALSE
+)
+```
+#let's just see the summary of this stats
+
+```{r}
+summary(m_max)
+```
+```{r}
+rePCA(m_max)
+```
+# 1. Fit a model without the stimuli_type random slopes:
+
+```{r}
+m_simp1 <- lmer(
+  error_rate ~ response
+             * volatility
+             * stimuli_type
+    + (1
+       + response
+       + volatility
+       || subject),      # dropped stimuli_type slopes
+  data    = data_mod,
+  control = lmerControl(
+    optimizer   = "bobyqa",
+    calc.derivs  = FALSE,
+    optCtrl      = list(maxfun = 2e5)
+  ),
+  REML    = FALSE
+)
+
+```
+
+#Let's compare the two models to see which would be a better fir
+
+```{r}
+anova(m_max, m_simp1, refit = FALSE)
+```
+#p > .20 as  p = .9268
+#From this it appears that I don't loose much by dropping stimuli_type as a slope this I shall choose m_simp1 as my model and run posthoc tests 
+
+#Now going to SOP
+# I will first test out Volatility and error rate: Lower error rates fo stable vs volatile trials
+
+```{r}
+library(emmeans)
+```
+
+
+
+
