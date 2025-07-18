@@ -7,10 +7,6 @@ This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute
 
 Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
 
-```{r}
-plot(cars)
-```
-
 Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
 
 When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
@@ -39,13 +35,14 @@ data$volatility <- factor(data$volatility)
 data$session <- factor(data$session)
 
 ```
+#This is for all sessions
 ```{r}
 model <- lmer(RT_s ~ congruency_response * time_since_switch * volatility * session + 
               (1 + congruency_response | subject), 
               data = data)
 
 ```
-
+#But I am only interested in session 1 here 
 ```{r}
 model_session1 <- lmer(RT_s ~ congruency_response * time_since_switch * volatility + 
                        (1 | subject), 
@@ -80,15 +77,34 @@ ggplot(data_session1, aes(x = time_since_switch, y = RT_s, color = congruency_re
   theme_minimal()
 
 ```
+#here following the SOP recommendations I want to find out whether my model is singular
+
 ```{r}
-lme4::isSingular(model, tol = 1e-4)
+lme4::isSingular(model_session1, tol = 1e-4)
 
 ```
+#Conservative estimation — just random intercepts to avoid overfitting, especially when you have singularity issues.
+
+```{r}
+model_summary <- lmer(
+  RT_s ~ congruency_response * time_since_switch * volatility + 
+         (1 | subject),
+  data = data_session1
+)
+
+```
+
 
 ```{r}
 summary(model_session1)$varcor
 
 ```
+# This means that the average subject-level variation in baseline RT is about 0.105 seconds (since your DV is RT_s, i.e. in seconds). That’s substantial, meaning there is meaningful variation across subjects in their average RTs.
+# Residual: This reflects the remaining within-subject variability, i.e. how much RT varies from trial to trial within subjects. It’s naturally larger, as trial-by-trial noise is usually high.
+
+
+#I do this to try a more maximal model and then reduce 
+
 ```{r}
 model_max <- lmer(RT_s ~ congruency_response * time_since_switch * volatility + 
                   (1 + congruency_response | subject), 
@@ -118,4 +134,105 @@ model_simple <- lmer(RT_s ~ congruency_response * time_since_switch * volatility
 ```{r}
 anova(model_simple, model_full)
 ```
+#fitted a linear mixed-effects model predicting response times (RT_s) from a fully crossed interaction between congruency_response, time_since_switch, and volatility, with a random intercept for subject (model_simple). 
 
+#compared this to a model with both a random intercept and a random slope for congruency_response by subject (model_full), as recommended by Barr et al. (2013) to minimize inflated Type I error rates. 
+
+#Although the full model yielded a singular fit warning (as confirmed by rePCA(), indicating a variance of zero for the slope term), a likelihood ratio test showed that it provided a significantly better fit to the data than the simpler model, χ²(2) = 17.67, p = .00015. Following best practices for prioritizing Type I error control, we retained the full model for interpretation while acknowledging the singularity and potential overparameterization. Both models are reported, and results are interpreted with caution.
+
+
+#Now I move forward with Congruency & Objective performance 
+```{r}
+model_s1 <- glmer(error_rate ~ congruency_response * time_since_switch +
+                    (1 + congruency_response + time_since_switch | subject),
+                  data = data_session1,
+                  family = binomial)
+
+```
+```{r}
+model_uncorrelated <- glmer(error_rate ~ congruency_response * time_since_switch +
+                              (1 + congruency_response + time_since_switch || subject),
+                            data = data_session1,
+                            family = binomial)
+
+```
+```{r}
+rePCA(model_s1)
+
+```
+```{r}
+model_conservative <- lmer(
+  RT_s ~ congruency_response * time_since_switch * volatility + (1 | subject),
+  data = data_session1
+)
+
+```
+
+```{r}
+summary(model_conservative)
+
+```
+#to check residuals: 
+```{r}
+plot(model_conservative)       # Residuals vs. fitted, scale-location, etc.
+qqnorm(resid(model_conservative))
+qqline(resid(model_conservative))
+
+```
+```{r}
+plot(ggpredict(
+  model_conservative, 
+  terms = c("time_since_switch", "congruency_response", "volatility")
+)) +
+  ggtitle("Predicted RT by Time Since Switch, Congruency & Volatility") +
+  theme_minimal()
+
+```
+# I want to plot the objectively correct response 
+#For this apparently I need predictors for the predicted probability of a correct response (error_rate = 1) as a function of time_since_switch, for each level of congruency_response.
+```{r}
+preds <- ggpredict(model_conservative, terms = c("time_since_switch", "congruency_response"))
+
+```
+
+```{r}
+library(ggplot2)
+
+plot(preds) +
+  labs(
+    title = "Predicted Accuracy over Time Since Switch",
+    x = "Time Since Switch",
+    y = "Predicted Probability of Correct Response"
+  ) +
+  theme_minimal()
+
+```
+```{r}
+library(dplyr)
+data_session1 %>%
+  group_by(congruency_response) %>%
+  summarise(mean_accuracy = mean(error_rate, na.rm = TRUE))
+
+```
+```{r}
+data_session1$congruency_response <- factor(data_session1$congruency_response, levels = c("congruent", "incongruent"))
+
+```
+
+```{r}
+model_correct <- glmer(
+  error_rate ~ congruency_response * time_since_switch +
+    (1 + time_since_switch | subject),
+  data = data_session1,
+  family = binomial
+)
+
+library(ggeffects)
+plot(ggpredict(model_correct, terms = c("time_since_switch", "congruency_response"))) +
+  labs(
+    title = "Predicted Accuracy over Time Since Switch",
+    x = "Time Since Switch",
+    y = "Predicted Probability of Correct Response"
+  )
+
+```
