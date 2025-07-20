@@ -143,14 +143,14 @@ anova(model_simple, model_full)
 
 #Now I move forward with Congruency & Objective performance 
 ```{r}
-model_s1 <- glmer(error_rate ~ congruency_response * time_since_switch +
+model_s1 <- glmer(accuracy  ~ congruency_response * time_since_switch +
                     (1 + congruency_response + time_since_switch | subject),
                   data = data_session1,
                   family = binomial)
 
 ```
 ```{r}
-model_uncorrelated <- glmer(error_rate ~ congruency_response * time_since_switch +
+model_uncorrelated <- glmer(accuracy  ~ congruency_response * time_since_switch +
                               (1 + congruency_response + time_since_switch || subject),
                             data = data_session1,
                             family = binomial)
@@ -189,7 +189,7 @@ plot(ggpredict(
 
 ```
 # I want to plot the objectively correct response 
-#For this apparently I need predictors for the predicted probability of a correct response (error_rate = 1) as a function of time_since_switch, for each level of congruency_response.
+#For this apparently I need predictors for the predicted probability of a correct response (accuracy  = 1) as a function of time_since_switch, for each level of congruency_response.
 ```{r}
 preds <- ggpredict(model_conservative, terms = c("time_since_switch", "congruency_response"))
 
@@ -211,7 +211,7 @@ plot(preds) +
 library(dplyr)
 data_session1 %>%
   group_by(congruency_response) %>%
-  summarise(mean_accuracy = mean(error_rate, na.rm = TRUE))
+  summarise(mean_accuracy = mean(accuracy , na.rm = TRUE))
 
 ```
 ```{r}
@@ -221,7 +221,7 @@ data_session1$congruency_response <- factor(data_session1$congruency_response, l
 
 ```{r}
 model_correct <- glmer(
-  error_rate ~ congruency_response * time_since_switch +
+  accuracy  ~ congruency_response * time_since_switch +
     (1 + time_since_switch | subject),
   data = data_session1,
   family = binomial
