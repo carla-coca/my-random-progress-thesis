@@ -32,9 +32,15 @@ data1 <- data1 %>%
 # (response has 114 NAs we’ll remove; accuracy  should have none)
 ```{r}
 data_mod <- data1 %>%
+<<<<<<< HEAD
   select(subject, error_rate , response, volatility, stimuli_type) %>%
   filter(
     !is.na(error_rate ),
+=======
+  select(subject, accuracy , response, volatility, stimuli_type) %>%
+  filter(
+    !is.na(accuracy ),
+>>>>>>> f3635266d97363d9fa017386eb16ca1795ab1bd3
     !is.na(response),
     !is.na(volatility),
     !is.na(stimuli_type)
@@ -53,7 +59,11 @@ lapply(data_mod[c("response","volatility","stimuli_type")], levels)
 
 ```{r}
 m_max <- lmer(
+<<<<<<< HEAD
   error_rate  ~ response
+=======
+  accuracy  ~ response
+>>>>>>> f3635266d97363d9fa017386eb16ca1795ab1bd3
              * volatility
              * stimuli_type
     + (1
@@ -82,7 +92,11 @@ rePCA(m_max)
 
 ```{r}
 m_simp1 <- lmer(
+<<<<<<< HEAD
   error_rate  ~ response
+=======
+  accuracy  ~ response
+>>>>>>> f3635266d97363d9fa017386eb16ca1795ab1bd3
              * volatility
              * stimuli_type
     + (1
