@@ -29,12 +29,12 @@ data1 <- data1 %>%
   )
 ```
 # Drop rows with true NAs in any model variable
-# (response has 114 NAs we’ll remove; error_rate should have none)
+# (response has 114 NAs we’ll remove; accuracy  should have none)
 ```{r}
 data_mod <- data1 %>%
-  select(subject, error_rate, response, volatility, stimuli_type) %>%
+  select(subject, accuracy , response, volatility, stimuli_type) %>%
   filter(
-    !is.na(error_rate),
+    !is.na(accuracy ),
     !is.na(response),
     !is.na(volatility),
     !is.na(stimuli_type)
@@ -49,11 +49,11 @@ data_mod <- data1 %>%
 nrow(data_mod)   # should be 7260 − 114 = 7146
 lapply(data_mod[c("response","volatility","stimuli_type")], levels)
 ```
-#1: Model 1: the effect of my dependent variables on error_rate & subject 
+#1: Model 1: the effect of my dependent variables on accuracy  & subject
 
 ```{r}
 m_max <- lmer(
-  error_rate ~ response
+  accuracy  ~ response
              * volatility
              * stimuli_type
     + (1
@@ -82,7 +82,7 @@ rePCA(m_max)
 
 ```{r}
 m_simp1 <- lmer(
-  error_rate ~ response
+  accuracy  ~ response
              * volatility
              * stimuli_type
     + (1
